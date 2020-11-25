@@ -5,15 +5,19 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "install-bin": "./scripts/install.sh",
+    "postinstall": "(yarn run install-bin)"
   },
   "dependencies": {
     "autoprefixer": "^10.0.2",
+    "canvas": "^2.6.1",
     "feedparser": "^2.2.10",
     "gm": "^1.23.1",
     "mongodb": "^3.6.3",
     "next": "10.0.3",
     "next-connect": "^0.9.1",
+    "pdfjs-dist": "^2.5.207",
     "postcss": "^8.1.10",
     "react": "17.0.1",
     "react-dom": "17.0.1",

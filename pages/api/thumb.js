@@ -2,9 +2,43 @@ import FeedParser from 'feedparser'
 import { getDatabase } from '../../middleware/database';
 import request from 'request'
 import fs from 'fs'
-import gm from 'gm'
+import { createCanvas } from 'canvas'
 import os from 'os'
 import path from 'path'
+
+const pdfjs = require('pdfjs-dist/es5/build/pdf.js')
+
+// Canvas factory
+function NodeCanvasFactory() {}
+NodeCanvasFactory.prototype = {
+  create: function NodeCanvasFactory_create(width, height) {
+    // assert(width > 0 && height > 0, 'Invalid canvas size');
+    var canvas = createCanvas(width, height);
+    var context = canvas.getContext("2d");
+    return {
+      canvas: canvas,
+      context: context
+    };
+  },
+
+  reset: function NodeCanvasFactory_reset(canvasAndContext, width, height) {
+    // assert(canvasAndContext.canvas, 'Canvas is not specified');
+    // assert(width > 0 && height > 0, 'Invalid canvas size');
+    canvasAndContext.canvas.width = width;
+    canvasAndContext.canvas.height = height;
+  },
+
+  destroy: function NodeCanvasFactory_destroy(canvasAndContext) {
+    // assert(canvasAndContext.canvas, 'Canvas is not specified');
+
+    // Zeroing the width and height cause Firefox to release graphics
+    // resources immediately, which can greatly reduce memory consumption.
+    canvasAndContext.canvas.width = 0;
+    canvasAndContext.canvas.height = 0;
+    canvasAndContext.canvas = null;
+    canvasAndContext.context = null;
+  }
+};
 
 
 async function fetchFromArxiv(startIndex, resultCount = 1) {
@@ -87,44 +121,41 @@ async function createThumb(paper) {
     }).pipe(file).on('finish', () => resolve()).on('error', (err) => reject(err))
   }) 
 
-  await new Promise((resolve, reject) => {
-    gm(pdfPath + "[0]") // The name of your pdf
-      .setFormat("png")
-      .resize(400) // Resize to fixed 200px width, maintaining aspect ratio
-      .quality(100) // Quality from 0 to 100
-      .write(imagePath, function(error){
-          // Callback function executed when finished
-          if (!error) {
-              resolve()
-          } else {
-              reject(error)
-          }
-      })
-  })
+  let doc = await pdfjs.getDocument(pdfPath).promise
+
+  const page = await doc.getPage(1)
+  const vp = page.getViewport(1)
+  const canvasFactory = new NodeCanvasFactory();
+  const canvasAndContext = canvasFactory.create(
+     200,
+     200
+  );  
+  const scale = Math.min(canvasAndContext.canvas.width / vp.width, canvasAndContext.canvas.height / vp.height)
+  const renderVp = page.getViewport({ scale: scale, })
+  await page.render({ canvasContext: canvasAndContext.context, viewport: renderVp, canvasFactory }).promise
+
+  const buf = canvasAndContext.canvas.toBuffer()
+  fs.writeFileSync(imagePath, buf)
 
   return imagePath
 }
 
 module.exports = async (req, res) => {
-  try {
-    const papers = await fetchFromArxiv(0)
+  const papers = await fetchFromArxiv(0)
 
-    await Promise.all(papers.map(paper => {
-      return createThumb(paper)
-    }))
+  await Promise.all(papers.map(paper => {
+    return createThumb(paper)
+  }))
 
-    const imagePath = 'cover.png'
-    const stat = fs.statSync(imagePath)
+  const imagePath = 'cover.png'
+  const stat = fs.statSync(imagePath)
 
-    res.writeHead(200, {
-        'Content-Type': 'image/png',
-        'Content-Length': stat.size
-    })
+  res.writeHead(200, {
+      'Content-Type': 'image/png',
+      'Content-Length': stat.size
+  })
 
-    var readStream = fs.createReadStream(imagePath)
-    // We replaced all the event handlers with a simple call to readStream.pipe()
-    readStream.pipe(res)
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
+  var readStream = fs.createReadStream(imagePath)
+  // We replaced all the event handlers with a simple call to readStream.pipe()
+  readStream.pipe(res)
 }
