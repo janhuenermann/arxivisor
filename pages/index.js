@@ -19,7 +19,7 @@ export default function Home({ papers, paperCount }) {
       let data = await response.json()
       setResults(data)
     }
-  }, 500, [searchText])
+  }, 250, [searchText])
 
   return (
     <div className="container max-w-7xl pt-12 px-10 mx-auto">

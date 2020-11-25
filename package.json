@@ -10,12 +10,14 @@
   "dependencies": {
     "autoprefixer": "^10.0.2",
     "feedparser": "^2.2.10",
+    "gm": "^1.23.1",
     "mongodb": "^3.6.3",
     "next": "10.0.3",
     "next-connect": "^0.9.1",
     "postcss": "^8.1.10",
     "react": "17.0.1",
     "react-dom": "17.0.1",
+    "request": "^2.88.2",
     "tailwindcss": "^2.0.1"
   },
   "devDependencies": {
