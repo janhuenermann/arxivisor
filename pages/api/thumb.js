@@ -7,6 +7,7 @@ import os from 'os'
 import path from 'path'
 
 const pdfjs = require('pdfjs-dist/es5/build/pdf.js')
+pdfjs.GlobalWorkerOptions.workerSrc = path.resolve(process.cwd(), 'node_modules/pdfjs-dist/es5/build/pdf.worker.js')
 
 // Canvas factory
 function NodeCanvasFactory() {}
