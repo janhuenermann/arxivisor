@@ -65,7 +65,7 @@ async function fetchFromArxiv(startIndex, resultCount = 1) {
 
 async function createThumb(paper) {
   await new Promise((resolve, reject) => {
-    const file = fs.createWriteStream("public/paper.pdf");
+    const file = fs.createWriteStream("paper.pdf");
     request({
       uri: paper.pdf,
       headers: {
@@ -82,11 +82,11 @@ async function createThumb(paper) {
   }) 
 
   await new Promise((resolve, reject) => {
-    gm("public/paper.pdf[0]") // The name of your pdf
+    gm("paper.pdf[0]") // The name of your pdf
       .setFormat("png")
       .resize(400) // Resize to fixed 200px width, maintaining aspect ratio
       .quality(100) // Quality from 0 to 100
-      .write("public/cover.png", function(error){
+      .write("cover.png", function(error){
           // Callback function executed when finished
           if (!error) {
               resolve()
@@ -106,8 +106,17 @@ module.exports = async (req, res) => {
       return createThumb(paper)
     }))
 
+    const imagePath = 'cover.png'
+    const stat = fs.statSync(imagePath)
 
-    res.status(200).json(papers)
+    res.writeHead(200, {
+        'Content-Type': 'image/png',
+        'Content-Length': stat.size
+    })
+
+    var readStream = fs.createReadStream(imagePath)
+    // We replaced all the event handlers with a simple call to readStream.pipe()
+    readStream.pipe(res)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
