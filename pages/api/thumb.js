@@ -3,6 +3,8 @@ import { getDatabase } from '../../middleware/database';
 import request from 'request'
 import fs from 'fs'
 import gm from 'gm'
+import os from 'os'
+import path from 'path'
 
 
 async function fetchFromArxiv(startIndex, resultCount = 1) {
@@ -64,8 +66,12 @@ async function fetchFromArxiv(startIndex, resultCount = 1) {
 }
 
 async function createThumb(paper) {
+  let dir = os.tmpdir()
+  let pdfPath = path.join(dir, 'paper.pdf')
+  let imagePath = path.join(dir, 'paper.png')
+
   await new Promise((resolve, reject) => {
-    const file = fs.createWriteStream("paper.pdf");
+    const file = fs.createWriteStream(pdfPath);
     request({
       uri: paper.pdf,
       headers: {
@@ -82,11 +88,11 @@ async function createThumb(paper) {
   }) 
 
   await new Promise((resolve, reject) => {
-    gm("paper.pdf[0]") // The name of your pdf
+    gm(pdfPath + "[0]") // The name of your pdf
       .setFormat("png")
       .resize(400) // Resize to fixed 200px width, maintaining aspect ratio
       .quality(100) // Quality from 0 to 100
-      .write("cover.png", function(error){
+      .write(imagePath, function(error){
           // Callback function executed when finished
           if (!error) {
               resolve()
@@ -96,6 +102,7 @@ async function createThumb(paper) {
       })
   })
 
+  return imagePath
 }
 
 module.exports = async (req, res) => {
