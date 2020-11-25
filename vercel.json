@@ -1,0 +1,5 @@
+{
+  "env": {
+    "MONGODB_CONNECTION_STRING": "@mongodb_connection_string"
+  }
+}

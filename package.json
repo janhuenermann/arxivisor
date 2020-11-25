@@ -8,8 +8,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "feedparser": "^2.2.10",
+    "mongodb": "^3.6.3",
     "next": "10.0.3",
+    "next-connect": "^0.9.1",
     "react": "17.0.1",
-    "react-dom": "17.0.1"
+    "react-dom": "17.0.1",
+    "tailwindcss": "^2.0.1"
   }
 }

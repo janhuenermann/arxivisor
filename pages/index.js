@@ -1,65 +1,57 @@
+import { useState, useEffect } from 'react'
+
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 
-export default function Home() {
+import { Paper } from '../components/paper.jsx'
+import { getPapers } from './api/papers'
+import { useDebouncedEffect } from '../src/debouncedEffect'
+
+
+export default function Home({ papers }) {
+  const [results, setResults] = useState(papers)
+  const [searchText, setSearchText] = useState('')
+
+  useDebouncedEffect(async () => {
+    if (searchText.length == 0)
+      setResults(papers)
+    else {
+      let response = await fetch(`/api/search?q=${encodeURIComponent(searchText)}`)
+      let data = await response.json()
+      setResults(data)
+      console.log(data)
+    }
+  }, 500, [searchText])
+
   return (
     <div className={styles.container}>
       <Head>
-        <title>Create Next App</title>
+        <title>Arxiv Library</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
+        <input className={styles.searchField} type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+        {results.map((paper) => {
+          return (<Paper key={paper.id} {...paper} />)
+        })}
       </main>
 
       <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
+        <a>
+        Arxiv Lib
         </a>
       </footer>
     </div>
   )
+}
+
+
+export async function getStaticProps() {
+  let papers = await getPapers()
+
+  return {
+    props: { papers }, // will be passed to the page component as props
+    revalidate: 360,
+  }
 }
