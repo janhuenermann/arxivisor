@@ -125,15 +125,13 @@ async function createThumb(paper) {
   let doc = await pdfjs.getDocument(pdfPath).promise
 
   const page = await doc.getPage(1)
-  const vp = page.getViewport(1)
+  const vp = page.getViewport({ scale: 1., })
   const canvasFactory = new NodeCanvasFactory();
   const canvasAndContext = canvasFactory.create(
-     200,
-     200
+     vp.width,
+     vp.height
   );  
-  const scale = Math.min(canvasAndContext.canvas.width / vp.width, canvasAndContext.canvas.height / vp.height)
-  const renderVp = page.getViewport({ scale: scale, })
-  await page.render({ canvasContext: canvasAndContext.context, viewport: renderVp, canvasFactory }).promise
+  await page.render({ canvasContext: canvasAndContext.context, viewport: vp, canvasFactory }).promise
 
   const buf = canvasAndContext.canvas.toBuffer()
   fs.writeFileSync(imagePath, buf)
@@ -144,11 +142,10 @@ async function createThumb(paper) {
 module.exports = async (req, res) => {
   const papers = await fetchFromArxiv(0)
 
-  await Promise.all(papers.map(paper => {
+  const imagePaths = await Promise.all(papers.map(paper => {
     return createThumb(paper)
   }))
-
-  const imagePath = 'cover.png'
+  const imagePath = imagePaths[0]
   const stat = fs.statSync(imagePath)
 
   res.writeHead(200, {
