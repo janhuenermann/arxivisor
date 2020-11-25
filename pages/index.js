@@ -39,7 +39,7 @@ export default function Home({ papers }) {
 
       <footer className={styles.footer}>
         <a>
-        Arxiv Lib
+        Arxivisor
         </a>
       </footer>
     </div>
