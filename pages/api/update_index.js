@@ -57,10 +57,13 @@ module.exports = async (req, res) => {
     const db = await getDatabase()
     const paperCollection = db.collection('papers')
 
+    let status = {count: 0, titles: []}
+
     let insertCount = 0, totalInsertCount = 0
     let paperIndex = 0
     let fetches = 0
-    while ((insertCount > 0 && fetches < 8 && fetches > 0) || fetches == 0) {
+
+    while (!fetches || (insertCount > 0 && fetches < 10 && fetches > 0)) {
       const papers = await fetchFromArxiv(paperIndex)
       if (papers.length == 0)
         break
@@ -76,11 +79,13 @@ module.exports = async (req, res) => {
 
       paperIndex += papers.length
       insertCount = result.upsertedCount
-      totalInsertCount += insertCount
       fetches += 1
+      console.log(result)
+      status.titles = status.titles.concat(papers.map(x => x.title))
+      status.count += insertCount
     }
-    
-    res.status(200).json(totalInsertCount)
+
+    res.status(200).json(status)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

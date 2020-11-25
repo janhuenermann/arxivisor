@@ -1,7 +1,12 @@
-import styles from '../styles/Item.module.css'
+const dateTimeFormatterOptions = {
+  year: 'numeric', month: 'numeric', day: 'numeric',
+  hour: 'numeric', minute: 'numeric',
+  hour12: false
+}
 
-
-const formatter = new Intl.DateTimeFormat
+const locale = Intl.DateTimeFormat().resolvedOptions().locale
+const dateTimeFormatter = new Intl.DateTimeFormat(locale, dateTimeFormatterOptions)
+const formatDateTime = (dt) => dateTimeFormatter.format(dt)
 
 
 export function Paper({
@@ -12,11 +17,11 @@ export function Paper({
     url,
 }) {
     return (
-        <div className={styles.paper}>
-            <h3><a target="_blank" rel="noopener noreferrer" href={url}>{title}</a></h3>
+        <div className="">
+            <h3 className="text-lg font-bold"><a target="_blank" rel="noopener noreferrer" href={url}>{title}</a></h3>
             <p>{authors.map(author => (<span><a>{author}</a>, </span>))}</p>
-            <p>{formatter.format(datePublished)}</p>
-            <p>{summary}</p>
+            <p>{formatDateTime(new Date(datePublished))}</p>
+            <p className="mt-4 font-sans">{summary}</p>
         </div>
     )
 }
