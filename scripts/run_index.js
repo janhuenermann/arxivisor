@@ -1,8 +1,17 @@
-import FeedParser from 'feedparser'
-import { getDatabase } from '../../middleware/database';
+const FeedParser = require('feedparser')
+const { MongoClient } = require('mongodb')
+const fetch = require('node-fetch')
 
 
-async function fetchFromArxiv(startIndex, resultCount = 200) {
+const connectionString = process.env.MONGODB_CONNECTION_STRING
+const client = new MongoClient(connectionString, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+
+var db = null
+
+async function fetchFromArxiv(startIndex, resultCount = 100) {
   const url = `http://export.arxiv.org/api/query?search_query=cat:cs.CV+OR+cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.NE+OR+cat:stat.ML&sortBy=lastUpdatedDate&start=${startIndex}&max_results=${resultCount}`
   
   let response = await fetch(url)
@@ -58,40 +67,52 @@ async function fetchFromArxiv(startIndex, resultCount = 200) {
   return papers
 }
 
-module.exports = async (req, res) => {
-  const MAX_FETCHES = 10
+
+async function runIndex() {
   try {
-    const db = await getDatabase()
-    const paperCollection = db.collection('papers')
-
-    let status = { count: 0 }
-
-    let insertCount = 0, totalInsertCount = 0
-    let paperIndex = 0
-    let fetches = 0
-
-    while (!fetches || (insertCount > 0 && fetches < MAX_FETCHES && fetches > 0)) {
-      const papers = await fetchFromArxiv(paperIndex)
-      if (papers.length == 0)
-        break
-      const result = await paperCollection.bulkWrite(papers.map(paper => {
-        return { 
-          replaceOne: { 
-            filter: { id: paper.id }, 
-            replacement: paper,
-            upsert: true
-          }
-        }
-      }))
-
-      paperIndex += papers.length
-      insertCount = result.upsertedCount
-      fetches += 1
-      status.count += insertCount
-    }
-
-    res.status(200).json(status)
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+    await client.connect()
+    db = client.db('app')
   }
+  catch (err) {
+    console.log(`Failed to establish database connection. Error: ${err}`)
+    return
+  }
+
+  const MAX_FETCHES = 10
+  const paperCollection = db.collection('papers')
+
+  let status = { count: 0 }
+  let insertCount = 0
+  let paperIndex = 0
+  let fetches = 0
+
+  while (!fetches || (insertCount > 0 && fetches < MAX_FETCHES && fetches > 0)) {
+    const papers = await fetchFromArxiv(paperIndex)
+    console.log(`Fetched ${papers.length} papers, starting with index ${paperIndex}`)
+    if (papers.length == 0)
+      break
+
+    const result = await paperCollection.bulkWrite(papers.map(paper => {
+      return { 
+        replaceOne: { 
+          filter: { id: paper.id }, 
+          replacement: paper,
+          upsert: true
+        }
+      }
+    }))
+
+    paperIndex += papers.length
+    insertCount = result.upsertedCount
+    fetches += 1
+    status.count += insertCount
+
+    console.log(`Upserted ${insertCount}, matched ${result.matchedCount}`)
+  }
+
+  console.log(`Done`)
+  process.exit(1)
 }
+
+
+runIndex()

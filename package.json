@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "install-bin": "./scripts/install.sh",
-    "postinstall": "(yarn run install-bin)"
+    "postinstall": "(yarn run install-bin)",
+    "index": "node scripts/run_index.js"
   },
   "dependencies": {
     "autoprefixer": "^10.0.2",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@fullhuman/postcss-purgecss": "^3.0.0",
+    "node-fetch": "^2.6.1",
     "postcss-preset-env": "^6.7.0"
   }
 }

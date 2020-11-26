@@ -1,4 +1,5 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient } from 'mongodb'
+
 
 const connectionString = process.env.MONGODB_CONNECTION_STRING
 const client = new MongoClient(connectionString, {

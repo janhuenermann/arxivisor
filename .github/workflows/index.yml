@@ -25,3 +25,5 @@ jobs:
       # Runs a single command using the runners shell
       - run: npm install
       - run: npm run index
+        env:
+          MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
