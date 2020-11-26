@@ -6,23 +6,37 @@ import { getPapers } from './api/papers'
 import { useDebouncedEffect } from '../src/debouncedEffect'
 
 
-export default function Home({ papers, paperCount }) {
+function updateQueryString(search) {
+  const params = new URLSearchParams(location.search)
+  if (search)
+    params.set('q', search)
+  else
+    params.delete('q')
+  let queryString = params.toString()
+  if (queryString.length)
+    queryString = `?${queryString}`
+  window.history.replaceState({}, '', `${location.pathname}${queryString}`)
+}
+
+
+export default function Home({ initialSearchText, papers, paperCount }) {
   const [results, setResults] = useState(papers)
-  const [searchText, setSearchText] = useState('')
+  const [searchText, setSearchText] = useState(initialSearchText)
 
   useDebouncedEffect(async () => {
     let strippedSearchText = searchText.trim()
-    if (strippedSearchText.length == 0)
+    updateQueryString(searchText)
+    if (strippedSearchText.length == initialSearchText)
       setResults(papers)
     else {
-      let response = await fetch(`/api/search?q=${encodeURIComponent(strippedSearchText)}`)
+      let response = await fetch(`/api/papers?q=${encodeURIComponent(strippedSearchText)}`)
       let data = await response.json()
       setResults(data)
     }
   }, 250, [searchText])
 
   return (
-    <div className="container max-w-7xl pt-12 px-10 mx-auto">
+    <div className="container max-w-7xl pt-12 px-4 mx-auto">
       <Head>
         <title>Arxivisor</title>
         <link rel="icon" href="/favicon.ico" />
@@ -32,7 +46,8 @@ export default function Home({ papers, paperCount }) {
         <h1 className="font-extrabold text-3xl text-center pb-8">Arxivisor</h1>
         <div className="flex flex-col space-y-6">
           <input 
-            className="text-xl p-1 pl-2 w-full rounded-lg border-2 border-black focus:ring-2 ring-gray-400 outline-none"
+            className="text-xl p-1 pl-2 w-full rounded-lg border-2 border-black focus:ring-2 ring-gray-400 outline-none 
+                       dark:bg-gray-600 dark:border-gray-500 dark:ring-gray-400"
             type="text" 
             value={searchText} 
             placeholder={`Search ${paperCount} papers...`}
@@ -55,11 +70,14 @@ export default function Home({ papers, paperCount }) {
 }
 
 
-export async function getStaticProps() {
-  let { papers, count, } = await getPapers()
+export async function getServerSideProps(context) {
+  let initialSearchText = context.query.q || ''
+  let [ papers, count, ] = await getPapers({
+    search: initialSearchText.length ? initialSearchText : null,
+    retrieveCount: true
+  })
 
   return {
-    props: { papers, paperCount: count }, // will be passed to the page component as props
-    revalidate: 360,
+    props: { initialSearchText, papers, paperCount: count }, // will be passed to the page component as props
   }
 }

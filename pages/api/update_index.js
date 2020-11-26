@@ -19,19 +19,25 @@ async function fetchFromArxiv(startIndex, resultCount = 200) {
 
       while (item = stream.read()) {
         /// -- Begin parsing
-        let authors = []
+        let authors = [], categories = []
 
         if (Array.isArray(item['atom:author']))
           authors = item['atom:author'].map(x => x.name['#'])
         else
           authors = [item['atom:author'].name['#']]
+
+        if (Array.isArray(item['atom:category']))
+          categories = item['atom:category'].map(x => x['@'].term)
+        else
+          categories = [item['atom:category']['@'].term]
         
         result.push({ 
           title: item.title, 
           summary: item.summary, 
           url: item.link, 
           id: item.guid, 
-          authors: authors, 
+          authors, 
+          categories,
           datePublished: item.pubDate.getTime()
         })
         /// --- End parsing
@@ -53,17 +59,18 @@ async function fetchFromArxiv(startIndex, resultCount = 200) {
 }
 
 module.exports = async (req, res) => {
+  const MAX_FETCHES = 10
   try {
     const db = await getDatabase()
     const paperCollection = db.collection('papers')
 
-    let status = {count: 0, titles: []}
+    let status = { count: 0 }
 
     let insertCount = 0, totalInsertCount = 0
     let paperIndex = 0
     let fetches = 0
 
-    while (!fetches || (insertCount > 0 && fetches < 10 && fetches > 0)) {
+    while (!fetches || (insertCount > 0 && fetches < MAX_FETCHES && fetches > 0)) {
       const papers = await fetchFromArxiv(paperIndex)
       if (papers.length == 0)
         break
@@ -80,8 +87,6 @@ module.exports = async (req, res) => {
       paperIndex += papers.length
       insertCount = result.upsertedCount
       fetches += 1
-      console.log(result)
-      status.titles = status.titles.concat(papers.map(x => x.title))
       status.count += insertCount
     }
 

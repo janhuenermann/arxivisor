@@ -1,0 +1,7 @@
+.paper .paper-tooltip {
+    visibility: hidden;
+}
+
+.paper:hover .paper-tooltip {
+    visibility: visible;
+}

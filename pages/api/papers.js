@@ -1,21 +1,44 @@
 import { getDatabase } from '../../middleware/database';
 
 
-export async function getPapers() {
+export async function getPapers({ search = null, retrieveCount = false }) {
     let db = await getDatabase()
+    let countOp = null
 
-    let countOp = db.collection('papers').count()
     let paperOp = (async () => {
-        let result = await db.collection('papers').find().sort({ datePublished: -1 }).project({ _id: 0 }).limit(50)
-        return await result.toArray() 
+        // Build query
+        let selector = {}, projection = { _id: 0 }, sorting = {}
+        if (!!search) {
+            selector['$text'] = { 
+                $search: search,
+                $language: 'en',
+                $caseSensitive: false,
+                $diacriticSensitive: false
+            }
+            projection.score = { $meta: "textScore" }
+            sorting.score = { $meta: "textScore" }
+        }
+        // Add that last
+        sorting.datePublished = -1
+        // Get results
+        let result = await db.collection('papers').find(selector).project(projection).sort(sorting).limit(25)
+        return result.toArray() 
     })()
 
-    let [count, papers] = await Promise.all([countOp, paperOp])    
+    let ops = [paperOp]
+    if (retrieveCount) {
+        let countOp = db.collection('papers').count()
+        ops.push(countOp)
+    }
 
-    return { papers, count }
+    return await Promise.all(ops)    
 }
 
 export default async function (req, res) {
-    let papers = await getPapers()
+    let options = {}
+    if (req.query.q) {
+        options.search = req.query.q
+    }
+    let [papers] = await getPapers(options)
     res.json(papers)
 }
