@@ -13,7 +13,6 @@ var db = null
 
 async function fetchFromArxiv(startIndex, resultCount = 100) {
   const url = `http://export.arxiv.org/api/query?search_query=cat:cs.CV+OR+cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.NE+OR+cat:stat.ML&sortBy=lastUpdatedDate&start=${startIndex}&max_results=${resultCount}`
-  
   let response = await fetch(url)
 
   /** ugly hack to deal with lack of support for streams/pipeline in node 12 */
@@ -111,7 +110,7 @@ async function runIndex() {
   }
 
   console.log(`Done`)
-  process.exit(1)
+  process.exit(0)
 }
 
 
