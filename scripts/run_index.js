@@ -1,7 +1,8 @@
 const FeedParser = require('feedparser')
 const { MongoClient } = require('mongodb')
 const fetch = require('node-fetch')
-
+const path = require('path')
+require("dotenv").config({ path: path.resolve(process.cwd(), '.env.local') })
 
 const connectionString = process.env.MONGODB_CONNECTION_STRING
 const client = new MongoClient(connectionString, {
@@ -9,7 +10,6 @@ const client = new MongoClient(connectionString, {
   useUnifiedTopology: true,
 })
 
-var db = null
 
 async function fetchFromArxiv(startIndex, resultCount = 100) {
   const url = `http://export.arxiv.org/api/query?search_query=cat:cs.CV+OR+cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.NE+OR+cat:stat.ML&sortBy=lastUpdatedDate&start=${startIndex}&max_results=${resultCount}`
@@ -28,6 +28,7 @@ async function fetchFromArxiv(startIndex, resultCount = 100) {
       while (item = stream.read()) {
         /// -- Begin parsing
         let authors = [], categories = []
+        let pdf = item['atom:link'].map(x => x['@']).find(x => x.type == 'application/pdf')['href']
 
         if (Array.isArray(item['atom:author']))
           authors = item['atom:author'].map(x => x.name['#'])
@@ -46,6 +47,7 @@ async function fetchFromArxiv(startIndex, resultCount = 100) {
           id: item.guid, 
           authors, 
           categories,
+          pdf,
           datePublished: item.pubDate.getTime()
         })
         /// --- End parsing
@@ -70,7 +72,7 @@ async function fetchFromArxiv(startIndex, resultCount = 100) {
 async function runIndex() {
   try {
     await client.connect()
-    db = client.db('app')
+    var db = client.db('app')
   }
   catch (err) {
     console.log(`Failed to establish database connection. Error: ${err}`)
@@ -93,9 +95,9 @@ async function runIndex() {
 
     const result = await paperCollection.bulkWrite(papers.map(paper => {
       return { 
-        replaceOne: { 
+        updateOne: { 
           filter: { id: paper.id }, 
-          replacement: paper,
+          update: { $set: paper },
           upsert: true
         }
       }
