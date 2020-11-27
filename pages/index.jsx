@@ -8,27 +8,27 @@ import { getPapers } from './api/papers'
 import { updateQueryString, useDebouncedEffect } from '@/lib/util'
 
 
-const buildAPIURI = (searchText) => {
+const buildAPIURI = (query) => {
   let params = new URLSearchParams()
   // search
-  let trimmedSearchText = searchText.trim()
-  if (trimmedSearchText.length)
-    params.set('q', trimmedSearchText)
+  if (query.q.length)
+    params.set('q', query.q)
   // build url
-  let queryString = params.toString()
-  if (queryString.length)
-    return `/api/papers?${queryString}`
+  let uriQuery = params.toString()
+  if (uriQuery.length)
+    return `/api/papers?${uriQuery}`
   return `/api/papers`
 }
 
 
 export default function Home({ initialSearchText, initialPapers, paperCount }) {
   const [searchText, setSearchText] = useState(initialSearchText)
-  const apiUri = buildAPIURI(searchText)
+  const [query, setQuery] = useState({ q: initialSearchText, })
+  const apiUri = buildAPIURI(query)
   const { data: papers, error, isValidating, mutate } = useSWR(apiUri, fetcher, { 
     initialData: initialPapers,
-    dedupingInterval: 0,
-    focusThrottleInterval: 0, 
+    // dedupingInterval: 0,
+    // focusThrottleInterval: 0, 
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateOnMount: false })
@@ -36,7 +36,8 @@ export default function Home({ initialSearchText, initialPapers, paperCount }) {
   useDebouncedEffect(async () => {
     let strippedSearchText = searchText.trim()
     updateQueryString(searchText)
-    mutate()
+    setQuery({ ...query, q: strippedSearchText })
+    mutate(papers, true)
   }, 250, [searchText])
 
   return (

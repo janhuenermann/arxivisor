@@ -8,8 +8,9 @@ const path = require('path')
 const crypto = require('crypto')
 const os = require('os')
 const { ArgumentParser } = require('argparse')
-require("dotenv").config({ path: path.resolve(process.cwd(), '.env.local') })
 
+if (!process.env.MONGODB_CONNECTION_STRING)
+  require("dotenv").config({ path: path.resolve(process.cwd(), '.env.local') })
 
 const pdfjs = require('pdfjs-dist/es5/build/pdf.js')
 pdfjs.GlobalWorkerOptions.workerSrc = path.resolve(process.cwd(), 'node_modules/pdfjs-dist/es5/build/pdf.worker.js')
@@ -58,13 +59,7 @@ NodeCanvasFactory.prototype = {
 };
 
 async function parse(pdfPath, imagePathBase) {
-  try {
-    var doc = await pdfjs.getDocument(pdfPath).promise
-  }
-  catch (err) {
-    console.log(err)
-    return
-  }
+  var doc = await pdfjs.getDocument(pdfPath).promise
 
   const domainRegExp = /^(https?:\/\/)?(([a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+)(\/[a-zA-Z0-9\_\-]+)*\/?)$/
   let factory = new NodeCanvasFactory()
@@ -194,11 +189,19 @@ async function scrape(pdfPath, imagePathBase, s3) {
     return true
   // 3) generate thumbnail / parse
   console.log(`Opening pdf and rendering pages... [${pdfPath}]`)
-  const { thumbs, projectUrl, } = await parse(pdfPath, imagePathBase)
-  // 4) upload to aws
-  let thumbUrls = await upload(paper, thumbs, s3)
-  // 5) update fields
-  const info = { thumbs: thumbUrls, projectUrl, }
+  let info
+  try {
+    const { thumbs, projectUrl, } = await parse(pdfPath, imagePathBase)
+    // 4) upload to aws
+    let thumbUrls = await upload(paper, thumbs, s3)
+    // 5) update fields
+    info = { thumbs: thumbUrls, projectUrl, }
+  }
+  catch (err) {
+    console.log(`Error parsing PDF: ${err}`)
+    info = {}
+  }
+  
   let dbResult = await db.collection('papers').updateOne({ _id: paper._id } , { $set: { info, } })
   if (!dbResult.result.nModified) {
     console.log(dbResult)

@@ -2,7 +2,9 @@ const FeedParser = require('feedparser')
 const { MongoClient } = require('mongodb')
 const fetch = require('node-fetch')
 const path = require('path')
-require("dotenv").config({ path: path.resolve(process.cwd(), '.env.local') })
+
+if (!process.env.MONGODB_CONNECTION_STRING)
+  require("dotenv").config({ path: path.resolve(process.cwd(), '.env.local') })
 
 const connectionString = process.env.MONGODB_CONNECTION_STRING
 const client = new MongoClient(connectionString, {

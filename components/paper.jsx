@@ -1,6 +1,8 @@
 import Latex from 'react-latex'
 import Image from 'next/image'
 
+import ExternalLinkIcon from '@/lib/icons/external-link.svg'
+
 
 const dateTimeFormatterOptions = {
   year: 'numeric', month: 'numeric', day: 'numeric',
@@ -32,7 +34,7 @@ export function Paper({
     return (
         <div className="paper relative">
             <div className="flex flex-col space-y-0.5">
-                <h3 className="text-lg font-bold leading-tight"><a target="_blank" rel="noopener noreferrer" href={url}>{titleEl}</a></h3>
+                <h3 className="text-lg font-bold leading-tight"><a target="_blank" rel="noopener noreferrer" href={url}>{titleEl}</a>{info && info.projectUrl && <a className="inline-block align-middle pl-2" href={`http://${info.projectUrl}`} target="_blank"> <ExternalLinkIcon className="transform scale-90" /></a>}</h3>
                 <p>{authors.map(author => (<span><a className="hover:text-gray-500">{author}</a>, </span>))}</p>
                 <div className="flex flex-row space-x-2 flex-wrap">
                     <span>{formatDateTime(new Date(datePublished))}</span>

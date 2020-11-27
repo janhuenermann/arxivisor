@@ -11,12 +11,14 @@
     "index": "node scripts/run_index.js"
   },
   "dependencies": {
+    "@svgr/webpack": "^5.5.0",
     "argparse": "^2.0.1",
     "autoprefixer": "^10.0.2",
     "canvas": "^2.6.1",
     "feedparser": "^2.2.10",
     "gm": "^1.23.1",
     "mongodb": "^3.6.3",
+    "needle": "^2.5.2",
     "next": "10.0.3",
     "next-connect": "^0.9.1",
     "pdfjs-dist": "^2.5.207",
