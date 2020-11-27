@@ -7,7 +7,7 @@ const purgecss = [
         './components/**/*.{js,jsx,ts,tsx}'
     ],
     // This is the function used to extract class names from the templates
-    defaultExtractor: content => content.match(/[\w-/:]+(?<!:)/g) || []
+    defaultExtractor: content => content.match(/[0-9\w-/:\.]+(?<!:)/g) || []
   },
 ];
 module.exports = {

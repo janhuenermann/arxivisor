@@ -1,38 +1,42 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
+import useSWR from 'swr'
 
-import { Paper } from '../components/paper.jsx'
+import fetcher from '@/lib/fetch'
+import { Paper } from '@/components/paper.jsx'
 import { getPapers } from './api/papers'
-import { useDebouncedEffect } from '../src/debouncedEffect'
+import { updateQueryString, useDebouncedEffect } from '@/lib/util'
 
 
-function updateQueryString(search) {
-  const params = new URLSearchParams(location.search)
-  if (search)
-    params.set('q', search)
-  else
-    params.delete('q')
+const buildAPIURI = (searchText) => {
+  let params = new URLSearchParams()
+  // search
+  let trimmedSearchText = searchText.trim()
+  if (trimmedSearchText.length)
+    params.set('q', trimmedSearchText)
+  // build url
   let queryString = params.toString()
   if (queryString.length)
-    queryString = `?${queryString}`
-  window.history.replaceState({}, '', `${location.pathname}${queryString}`)
+    return `/api/papers?${queryString}`
+  return `/api/papers`
 }
 
 
-export default function Home({ initialSearchText, papers, paperCount }) {
-  const [results, setResults] = useState(papers)
+export default function Home({ initialSearchText, initialPapers, paperCount }) {
   const [searchText, setSearchText] = useState(initialSearchText)
+  const apiUri = buildAPIURI(searchText)
+  const { data: papers, error, isValidating, mutate } = useSWR(apiUri, fetcher, { 
+    initialData: initialPapers,
+    dedupingInterval: 0,
+    focusThrottleInterval: 0, 
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateOnMount: false })
 
   useDebouncedEffect(async () => {
     let strippedSearchText = searchText.trim()
     updateQueryString(searchText)
-    if (strippedSearchText.length == initialSearchText)
-      setResults(papers)
-    else {
-      let response = await fetch(`/api/papers?q=${encodeURIComponent(strippedSearchText)}`)
-      let data = await response.json()
-      setResults(data)
-    }
+    mutate()
   }, 250, [searchText])
 
   return (
@@ -53,7 +57,7 @@ export default function Home({ initialSearchText, papers, paperCount }) {
             placeholder={`Search ${paperCount} papers...`}
             onChange={(e) => setSearchText(e.target.value)} />
           <ol className="flex flex-col space-y-6">
-          {results.map((paper) => {
+          {papers.map((paper) => {
             return (<li key={paper.id}><Paper {...paper} /></li>)
           })}
           </ol>
@@ -71,13 +75,13 @@ export default function Home({ initialSearchText, papers, paperCount }) {
 
 
 export async function getServerSideProps(context) {
-  let initialSearchText = context.query.q || ''
+  let initialSearchText = (context.query.q || '').trim()
   let [ papers, count, ] = await getPapers({
     search: initialSearchText.length ? initialSearchText : null,
     retrieveCount: true
   })
 
   return {
-    props: { initialSearchText, papers, paperCount: count }, // will be passed to the page component as props
+    props: { initialSearchText, initialPapers: papers, paperCount: count }, // will be passed to the page component as props
   }
 }

@@ -1,4 +1,4 @@
-import { getDatabase } from '../../middleware/database';
+import { getDatabase } from '@/db/connection';
 
 
 export async function getPapers({ search = null, retrieveCount = false }) {
@@ -27,7 +27,7 @@ export async function getPapers({ search = null, retrieveCount = false }) {
 
     let ops = [paperOp]
     if (retrieveCount) {
-        let countOp = db.collection('papers').count()
+        let countOp = db.collection('papers').countDocuments()
         ops.push(countOp)
     }
 

@@ -24,6 +24,7 @@
     "react-dom": "17.0.1",
     "react-latex": "^2.0.0",
     "request": "^2.88.2",
+    "swr": "^0.3.9",
     "tailwindcss": "^2.0.1"
   },
   "devDependencies": {

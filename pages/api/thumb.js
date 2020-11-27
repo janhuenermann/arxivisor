@@ -1,5 +1,5 @@
 import FeedParser from 'feedparser'
-import { getDatabase } from '../../middleware/database';
+import { getDatabase } from '@/db/connection';
 import request from 'request'
 import fs from 'fs'
 import { createCanvas } from 'canvas'
