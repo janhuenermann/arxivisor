@@ -23,7 +23,6 @@ async function fetchFromArxiv(startIndex, resultCount = 100) {
     console.log(await response.text())
     throw 'Response not ok'
   }
-
   /** ugly hack to deal with lack of support for streams/pipeline in node 12 */
   let papers = await new Promise((resolve, reject) => {
     let feedparser = new FeedParser()

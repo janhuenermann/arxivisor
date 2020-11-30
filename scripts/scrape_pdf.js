@@ -113,24 +113,29 @@ async function parse(paper, pdfPath, imagePathBase) {
         if (fetchedAnnotations.indexOf(annotation.url) >= 0)
           continue
         // Fetch web page title
-        const webPageTitle = await getWebPageTitle(annotation.url)
-        // Record dataset
-        if (webPageTitle) {
-          console.log(chalk.blue(`Fetched annotation, '${annotation.url}' '${webPageTitle}'`))
-          const record = {
-            guid: paper.guid,
-            title: paper.title,
-            url: annotation.url,
-            urlTitle: webPageTitle,
-            pageNumber: i,
-            updated: (new Date).getTime(),
+        try {
+          const webPageTitle = await getWebPageTitle(annotation.url)
+          // Record dataset
+          if (webPageTitle) {
+            console.log(chalk.blue(`Fetched annotation, '${annotation.url}' '${webPageTitle}'`))
+            const record = {
+              guid: paper.guid,
+              title: paper.title,
+              url: annotation.url,
+              urlTitle: webPageTitle,
+              pageNumber: i,
+              updated: (new Date).getTime(),
+            }
+            // Insert into db
+            await db.collection('annotations')
+              .updateOne({ guid: record.guid, url: record.url }, { $set: record }, { upsert: true })
           }
-          // Insert into db
-          await db.collection('annotations')
-            .updateOne({ guid: record.guid, url: record.url }, { $set: record }, { upsert: true })
+          // Memorise that we have tested this url
+          fetchedAnnotations.push(annotation.url)
         }
-        // Memorise that we have tested this url
-        fetchedAnnotations.push(annotation.url)
+        catch (err) {
+          console.log(chalk.red(`Error during annotation fetch: ${err}`))
+        }
       }
     }
 
@@ -220,15 +225,19 @@ async function upload(paper, thumbs, s3) {
 
 async function scrape(pdfPath, imagePathBase, s3) {
   // 1) fetch a record from the database that has no thumbnail field
-  const records = await db.collection('papers').find({ info: { $exists: false } }).sort({ datePublished: -1 }).limit(1).toArray()
+  const recordsOp = db.collection('papers').find({ info: { $exists: false } }).sort({ datePublished: -1 }).limit(1).toArray()
+  const countOp = db.collection('papers').countDocuments({ info: { $exists: false } })
+
+  const [records, count] = await Promise.all([recordsOp, countOp])
+
   if (!records.length)
     return false
   const paper = records[0]
 
-  console.log(chalk.bold(`- - - - - -`))
-  console.log(chalk.yellow.bold(`Paper: ${paper.title}`))
+  console.log(chalk.bold(`- - - Paper [/${String(count).padStart(4, '0')}] - - -`))
+  console.log(chalk.yellow.bold(`${paper.title}`))
   console.log(chalk.cyan.italic(paper.authors.join(', ')))
-  console.log(chalk.magenta(paper.pdf))
+  console.log(chalk.magenta.italic(paper.pdf))
 
   // 2) download pdf
   const downloaded = await download(paper, pdfPath)
