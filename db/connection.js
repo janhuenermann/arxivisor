@@ -15,7 +15,8 @@ global.mongo.client = new MongoClient(process.env.MONGODB_CONNECTION_STRING, {
 
 export async function createIndexes(db) {
     await Promise.all([
-        db.collection('papers').createIndex({ id: -1 }, { unique: true }),
+        db.collection('papers').createIndex({ guid: -1 }, { unique: true }),
+        db.collection('papers').createIndex({ ref: -1 }, { unique: true }),
         db.collection('papers').createIndex({ title: 'text', summary: 'text', authors: 'text' })
     ])
 }

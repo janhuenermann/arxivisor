@@ -59,7 +59,7 @@ export default function Home({ initialSearchText, initialPapers, paperCount }) {
             onChange={(e) => setSearchText(e.target.value)} />
           <ol className="flex flex-col space-y-6">
           {papers.map((paper) => {
-            return (<li key={paper.id}><Paper {...paper} /></li>)
+            return (<li key={paper.guid}><Paper {...paper} /></li>)
           })}
           </ol>
         </div>

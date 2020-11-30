@@ -3,6 +3,7 @@ const { MongoClient } = require('mongodb')
 const fetch = require('node-fetch')
 const path = require('path')
 
+
 if (!process.env.MONGODB_CONNECTION_STRING)
   require("dotenv").config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -16,6 +17,12 @@ const client = new MongoClient(connectionString, {
 async function fetchFromArxiv(startIndex, resultCount = 100) {
   const url = `http://export.arxiv.org/api/query?search_query=cat:cs.CV+OR+cat:cs.AI+OR+cat:cs.LG+OR+cat:cs.CL+OR+cat:cs.NE+OR+cat:stat.ML&sortBy=lastUpdatedDate&start=${startIndex}&max_results=${resultCount}`
   let response = await fetch(url)
+
+  if (!response.ok) {
+    console.log(`Backing off.. response not ok`)
+    console.log(await response.text())
+    throw 'Response not ok'
+  }
 
   /** ugly hack to deal with lack of support for streams/pipeline in node 12 */
   let papers = await new Promise((resolve, reject) => {
@@ -41,16 +48,25 @@ async function fetchFromArxiv(startIndex, resultCount = 100) {
           categories = item['atom:category'].map(x => x['@'].term)
         else
           categories = [item['atom:category']['@'].term]
-        
+
+        let idAndVersion = item.guid.match(/([^/]+)v(\d+)$/)
+        let version = '1', id = item.guid
+        if (idAndVersion) {
+          version = idAndVersion[2]
+          id = idAndVersion[1]
+        }
+
         result.push({ 
           title: item.title, 
           summary: item.summary, 
-          url: item.link, 
-          id: item.guid, 
-          authors, 
+          url: item.link,
+          guid: item.guid,
+          ref: { id, version },
+          authors,
           categories,
           pdf,
-          datePublished: item.pubDate.getTime()
+          datePublished: item.pubDate.getTime(),
+          dateUpdated: item.date.getTime()
         })
         /// --- End parsing
       }
@@ -81,7 +97,7 @@ async function runIndex() {
     return
   }
 
-  const MAX_FETCHES = 10
+  const MAX_FETCHES = 20
   const paperCollection = db.collection('papers')
 
   let status = { count: 0 }
@@ -98,7 +114,7 @@ async function runIndex() {
     const result = await paperCollection.bulkWrite(papers.map(paper => {
       return { 
         updateOne: { 
-          filter: { id: paper.id }, 
+          filter: { guid: paper.guid }, 
           update: { $set: paper },
           upsert: true
         }
@@ -109,7 +125,6 @@ async function runIndex() {
     insertCount = result.upsertedCount
     fetches += 1
     status.count += insertCount
-
     console.log(`Upserted ${insertCount}, matched ${result.matchedCount}`)
   }
 
