@@ -1,57 +1,56 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import Head from 'next/head'
-import useSWR from 'swr'
+import qs from "query-string"
 
-import fetcher from '@/lib/fetch'
 import { Paper } from '@/components/paper.jsx'
 import RemoveIcon from '@/lib/icons/circle-remove.svg'
 import { getPapers } from './api/papers'
-import { useQueryState, useDebouncedEffect } from '@/lib/util'
+import { useQueryState } from '@/lib/util'
 
-import qs from "query-string"
+
+
+const fetcher = async (filters) => {
+  let resp = await fetch(buildAPIURI(filters))
+  return await resp.json()
+}
 
 
 const buildAPIURI = (query) => {
-  let queryString = qs.stringify(query)
+  let queryString = qs.stringify(query, { skipNull: true, skipEmptyString: true })
   // build url
   if (queryString.length)
     return `/api/papers?${queryString}`
   return `/api/papers`
 }
 
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 
 export default function Home({ initialFilters, initialPapers, paperCount }) {
-  const [strippedFilters, updateStrippedFilters] = useQueryState(initialFilters)
-  const [filters, updateFilters] = useState({ ...strippedFilters })
+  const [strippedFilters, setStrippedFilters] = useQueryState(initialFilters)
+  const [filters, setFilters] = useState({ ...strippedFilters })
+  const [papers, _setPapers] = useState(initialPapers)
 
-  const apiUri = buildAPIURI(strippedFilters)
-  const { data: papers, error, isValidating, mutate } = useSWR(apiUri, fetcher, { 
-    initialData: initialPapers,
-    dedupingInterval: 0,
-    focusThrottleInterval: 0, 
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    revalidateOnMount: false
+  useIsomorphicLayoutEffect(() => {
+    fetcher(strippedFilters).then(result => _setPapers(result))
+  }, [strippedFilters])
+
+  const updateFilters = useCallback((newValue) => {
+    const newStrippedFilters = { ...strippedFilters, ...newValue }
+    setStrippedFilters(newStrippedFilters)
+    setFilters({ ...filters, ...newValue })
   })
 
-  useEffect(() => {
-    updateStrippedFilters({ 
-      authors: filters.authors, 
-      search: strippedFilters.search, 
-    })
-    // mutate swr
-    return mutate()
-  }, [filters.authors])
-
-  useDebouncedEffect(() => {
-    // clean filters
-    updateStrippedFilters({ 
-      ...strippedFilters,
-      search: filters.search.trim(),
-    })
-    // mutate swr
-    return mutate()
-  }, 250, [filters.search])
+  const debounceRef = useRef(null)
+  const updateSearch = useCallback((newValue) => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const newStrippedFilters = { ...strippedFilters, search: newValue }
+      setStrippedFilters(newStrippedFilters)
+    }, 250)
+    setFilters({ ...filters, search: newValue })
+  })
 
   return (
     <div className="container max-w-7xl pt-12 px-4 mx-auto">
@@ -69,11 +68,11 @@ export default function Home({ initialFilters, initialPapers, paperCount }) {
             type="text" 
             value={filters.search} 
             placeholder={`Search ${paperCount} papers...`}
-            onChange={(e) => updateFilters({ ...filters, search: e.target.value })} />
+            onChange={(e) => updateSearch(e.target.value)} />
           <div className="flex flex-row space-x-4">
           {filters.authors.map(author => {
             return (<a
-              onClick={(e) => updateFilters({ ...filters, authors: [...filters.authors.filter(x => x != author)], })} 
+              onClick={(e) => updateFilters({ authors: [...filters.authors.filter(x => x != author)], })} 
               className="px-2 py-1 bg-gray-200 rounded-lg text-s align-middle leading-6 cursor-pointer"><span>Author: </span><i>{author}</i> <RemoveIcon className="inline-block align-top transform scale-75" /></a>)
           })}
           </div>
@@ -81,7 +80,7 @@ export default function Home({ initialFilters, initialPapers, paperCount }) {
           {papers.map((paper) => {
             return (<li key={paper.guid}>
               <Paper
-                onauthorclick={(author) => updateFilters({ ...filters, authors: [author, ...filters.authors.filter(x => x != author)], })} 
+                onauthorclick={(author) => updateFilters({ authors: [author, ...filters.authors.filter(x => x != author)], })} 
                 {...paper} /></li>)
           })}
           </ol>
