@@ -4,7 +4,7 @@ if (dev) require("dotenv").config();
 module.exports = {
     
   images: {
-    domains: ['arxivisor.s3.eu-central-1.amazonaws.com'],
+    domains: ['arxivisor.s3.eu-central-1.amazonaws.com', 'arxivisor.s3.amazonaws.com'],
   },
 
   webpack(config) {

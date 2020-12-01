@@ -1,7 +1,7 @@
 import { getDatabase } from '@/db/connection';
 
 
-export async function getPapers({ search = null, retrieveCount = false }) {
+export async function getPapers({ search = null, authors = [], retrieveCount = false }) {
     let db = await getDatabase()
     let countOp = null
 
@@ -17,6 +17,9 @@ export async function getPapers({ search = null, retrieveCount = false }) {
             }
             projection.score = { $meta: "textScore" }
             sorting.score = { $meta: "textScore" }
+        }
+        if (authors.length) {
+            selector['authors'] = { $in: authors }
         }
         // Add that last
         sorting.datePublished = -1
@@ -35,10 +38,13 @@ export async function getPapers({ search = null, retrieveCount = false }) {
 }
 
 export default async function (req, res) {
-    let options = {}
-    if (req.query.q) {
-        options.search = req.query.q
-    }
+    let options = req.query
+    if (!options.search || !options.search.length)
+        options.search = null
+    if (!options.authors)
+        options.authors = []
+    if (!Array.isArray(options.authors))
+        options.authors = [options.authors]
     let [papers] = await getPapers(options)
     res.json(papers)
 }

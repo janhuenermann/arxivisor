@@ -101,7 +101,6 @@ async function fetchStats() {
    const t = (new Date).getTime()
    const old = t - 4 * 3600 * 1000
    const records = await db.collection('papers')
-      // .find({})
       .find({ $or: [{ twitter: { $exists: false } }, { twitter: { updated: { $lt: old } } }]  })
       .sort({ datePublished: -1 }).limit(10)
       .toArray()

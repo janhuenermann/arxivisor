@@ -28,34 +28,57 @@ async function ask(question) {
    })
 }
 
-async function getFeedback(availableAnnotations) {
+async function askAnnotation(q, availableAnnotations) {
    let ans = ""
    let parsed = -1
 
    while (parsed != ans || !(parsed >= 0 && parsed <= availableAnnotations.length)) {
-      ans = await ask(chalk.red.bold(`[${1}-${availableAnnotations.length}]`) + `: `)
+      ans = await ask(chalk.white.bold(q) + ' ' + chalk.red.bold(`[${1}-${availableAnnotations.length}]`) + `: `)
       if (ans === 'EXIT') {
          process.exit(0)
          return
       }
+      if (ans == '') {
+         ans = '0'
+      }
       parsed = parseInt(ans)
-   }
-
-   if (parsed == 0) {
-      console.log(`Unmatched.`)
-   }
-   else {
-      let label = availableAnnotations[parsed - 1]
-      console.log(`${chalk.bold('Selected label')}: ${label.urlTitle}`)
    }
 
    return parsed
 }
 
+function logLabel(label) {
+   let projectPage = label.projectPage || 'unmatched'
+   let sourceCode = label.sourceCode || 'unmatched'
+   let demo = label.demo || 'unmatched'
+
+   console.log(chalk.yellow.bold(`- - -  LABEL  - - -`))
+   console.log(`Selected ${chalk.italic('project page')}: ${chalk.green(projectPage)}`)
+   console.log(`Selected ${chalk.italic('source code')}: ${chalk.green(sourceCode)}`)
+   console.log(`Selected ${chalk.italic('demo')}: ${chalk.green(demo)}`)
+}
+
+async function getFeedback(availableAnnotations) {
+   let projectPage = await askAnnotation('Project page', availableAnnotations)
+   let sourceCode = await askAnnotation('Source code', availableAnnotations)
+   let demo = await askAnnotation('Demo', availableAnnotations)
+
+   let label = { projectPage: false, sourceCode: false, demo: false }
+   if (projectPage > 0)
+      label.projectPage = availableAnnotations[projectPage - 1].url
+   if (sourceCode > 0)
+      label.sourceCode = availableAnnotations[sourceCode - 1].url
+   if (demo > 0)
+      label.demo = availableAnnotations[demo - 1].url
+
+   logLabel(label)
+
+   return label
+}
+
 async function labelOne() {
    let aggrOp = db.collection('annotations')
       .aggregate([
-         { $sort: { guid: 1 } }, 
          { $group: { _id: '$guid', items: { $addToSet: '$$CURRENT' } } },
          { $lookup: {
             from: 'papers',
@@ -68,57 +91,57 @@ async function labelOne() {
             items: 1,
             paper: { $arrayElemAt: [ '$paper', 0 ] }
          } },
-         { $match: { 'paper.label.projectUrl': { $exists: false } } }
+         { $match: { 'paper': { $exists: true }, 'paper.label.projectPage': { $exists: false } } }
       ]).limit(1).toArray()
 
-   let totalAnnotatedOp = db.collection('annotations').aggregate([
-      { $group: { _id: '$guid' } },
-      { $group: { _id: 1, count: { $sum: 1 } } }
-   ]).toArray()
+   let annotationsCountOp = db.collection('annotations')
+      .aggregate([
+         { $group: { _id: '$guid' } },
+         { $count: 'count' }
+      ]).next()
 
-   let totalPapersOp = db.collection('papers').count()
-
-   let countOp = db.collection('papers').find({
-      'label.projectUrl': { $exists: false }
+   let labelsCountOp = db.collection('papers').find({
+      'label.projectPage': { $exists: true }
    }).count()
 
-   let [result, totalAnnotated, totalPapers, count] = await Promise.all([aggrOp, totalAnnotatedOp, totalPapersOp, countOp])
+   let [result, annotationsCount, labelsCount] = await Promise.all([aggrOp, annotationsCountOp, labelsCountOp])
    if (result.length == 0)
       return false
 
-   totalAnnotated = totalAnnotated[0].count
-
-   const blank = '\n'.repeat(process.stdout.rows)
-   console.log(blank)
-
-   readline.cursorTo(process.stdout, 0, 0)
-   readline.clearScreenDown(process.stdout)
-
-   let labelledCount = (totalPapers - count)
-
+   annotationsCount = annotationsCount.count
    let annot = result[0]
    let paper = annot.paper
-   const sep = chalk.yellow.bold
-   console.log(sep(`- - -  STATS  - - -`))
-   console.log(`Papers labelled: ${labelledCount} / ${totalAnnotated}`)
-   console.log(sep(`- - -  PAPER  - - -`))
-   console.log(`${chalk.green.bold(paper.title.replace('\n', ''))}`)
-   console.log(`${chalk.cyan(paper.authors.join(', '))}`)
-   console.log(`${chalk.hex('#DEADED')(paper.pdf)}`)
-   console.log()
-   console.log(`${chalk.italic(paper.summary)}`)
-   console.log(sep(`- - ANNOTATIONS - -`))
-
    let availableAnnotations = annot.items
    availableAnnotations.sort((a, b) => a.pageNumber - b.pageNumber)
 
-   for (var i = 1; i <= availableAnnotations.length; ++i) {
-      let a = availableAnnotations[i-1]
-      console.log(chalk.bold(`${i})`) + ` ${a.urlTitle} [Page ${a.pageNumber}]`)
-      console.log(`=> ${a.url}`)
+   function printInfo() {
+      const blank = '\n'.repeat(process.stdout.rows)
+      console.log(blank)
+
+      readline.cursorTo(process.stdout, 0, 0)
+      readline.clearScreenDown(process.stdout)
+
+      const sep = chalk.yellow.bold
+      console.log(sep(`- - -  STATS  - - -`))
+      console.log(`Papers labelled: ${labelsCount} / ${annotationsCount}`)
+      console.log(sep(`- - -  PAPER  - - -`))
+      console.log(`${chalk.green.bold(paper.title.replace('\n', ''))}`)
+      console.log(`${chalk.cyan(paper.authors.join(', '))}`)
+      console.log(`${chalk.hex('#DEADED')(paper.pdf)}`)
+      console.log()
+      console.log(`${chalk.italic(paper.summary)}`)
+      console.log(sep(`- - ANNOTATIONS - -`))
+
+      for (var i = 1; i <= availableAnnotations.length; ++i) {
+         let a = availableAnnotations[i-1]
+         console.log(chalk.bold(`${i})`) + ` ${a.urlTitle} [Page ${a.pageNumber}]`)
+         console.log(`=> ${a.url}`)
+      }
+
+      console.log(`Type 0 for no match.`)
    }
 
-   console.log(`Type 0 for no match.`)
+   printInfo()
 
    let label = await getFeedback(availableAnnotations)
    let ok = false
@@ -134,16 +157,12 @@ async function labelOne() {
          ok = true
       }
       catch {
+         printInfo()
          label = await getFeedback(availableAnnotations)
       }
    }
-   
-   let projectUrl = false
-   if (label > 0) {
-      projectUrl = availableAnnotations[label - 1].url
-   }
 
-   let update = { $set: { label: { projectUrl: projectUrl } } }
+   let update = { $set: { label, } }
    let updateResult = await db.collection('papers').updateOne({ guid: annot._id }, update)
    if (updateResult.result.nModified != 1) {
       console.log(updateResult)

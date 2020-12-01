@@ -3,15 +3,15 @@ import { MongoClient } from 'mongodb'
 
 const DB_NAME = 'app'
 
-global.mongo = global.mongo || {}
-global.mongo.initiated = false
-global.mongo.indexesCreated = false
-global.mongo.pendingConnectionPromise = null
-global.mongo.client = new MongoClient(process.env.MONGODB_CONNECTION_STRING, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
-
+global.mongo = global.mongo || {
+    initiated: false,
+    indexesCreated: false,
+    pendingConnectionPromise: null,
+    client: new MongoClient(process.env.MONGODB_CONNECTION_STRING, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    })
+}
 
 export async function createIndexes(db) {
     await Promise.all([
@@ -26,6 +26,7 @@ export async function getDatabase() {
     let shouldCreateIndex = false
     if (!global.mongo.initiated) {
         if (!global.mongo.pendingConnectionPromise) {
+            console.log("CONNECTING TO MONGODB")
             global.mongo.pendingConnectionPromise = global.mongo.client.connect()
         }
         try {

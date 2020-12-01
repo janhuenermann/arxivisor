@@ -75,9 +75,13 @@ NodeCanvasFactory.prototype = {
 };
 
 async function getWebPageTitle(url) {
-  const res = await fetch(url, { headers: browserHeaders })
+  const res = await fetch(url, { headers: browserHeaders, timeout: 1000 })
   if (!res.ok) {
     return null
+  }
+  const size = res.headers.get('content-length')
+  if (+size > 10 ** 6) {
+    throw `document too large (size: ${+size})`
   }
   const titleRegExp = /\<\s*title[^\>]*>([^\<]*)<\/\s*title\s*>/
   const body = await res.text()
@@ -204,7 +208,8 @@ async function upload(paper, thumbs, s3) {
           Bucket: BUCKET_NAME,
           Key: thumbKey,
           Body: fs.readFileSync(imagePath),
-          ACL: 'public-read'
+          ACL: 'public-read',
+          CacheControl: 'max-age=31536000'
         }, function (err, data) {
           if (err) {
             reject(err)
