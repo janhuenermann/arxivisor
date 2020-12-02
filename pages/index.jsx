@@ -80,7 +80,7 @@ export default function Home({ initialFilters, initialPapers, paperCount }) {
           {papers.map((paper) => {
             return (<li key={paper.guid}>
               <Paper
-                onauthorclick={(author) => updateFilters({ authors: [author, ...filters.authors.filter(x => x != author)], })} 
+                onauthorclick={(author) => updateFilters({ authors: [...filters.authors.filter(x => x != author), author], })} 
                 {...paper} /></li>)
           })}
           </ol>

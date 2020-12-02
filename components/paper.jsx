@@ -49,7 +49,7 @@ export function Paper({
                 </div>
                 {info && info.thumbs && (
                 <div className="flex flex-row space-x-1 overflow-y-scroll disable-scrollbars">
-                    {info.thumbs.map(thumb => (<div className="min-w-200"><Image
+                    {info.thumbs.map(thumb => (<div className="min-w-200 max-w-12rem"><Image
                         src={thumb}
                         alt="Page" className="bg-gray-100"
                         width={280}
