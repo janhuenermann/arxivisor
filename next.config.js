@@ -1,5 +1,5 @@
 const dev = process.env.NODE_ENV !== "production";
-if (dev) require("dotenv").config();
+if (dev) require("dotenv").config()
 
 module.exports = {
     
@@ -14,9 +14,9 @@ module.exports = {
         test: /\.(js|ts)x?$/,
       },
       use: ['@svgr/webpack'],
-    });
+    })
 
-    return config;
+    return config
   },
 
 }

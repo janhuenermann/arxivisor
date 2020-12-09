@@ -228,6 +228,15 @@ async function upload(paper, thumbs, s3) {
   return result
 }
 
+async function updatePaper(paper, info) {
+  let dbResult = await db.collection('papers').updateOne({ _id: paper._id } , { $set: { info, } })
+  if (!dbResult.result.nModified) {
+    console.log(dbResult)
+    console.log(chalk.red(`Error during update`))
+    process.exit(1)
+  }
+}
+
 async function scrape(pdfPath, imagePathBase, s3) {
   // 1) fetch a record from the database that has no thumbnail field
   const recordsOp = db.collection('papers').find({ info: { $exists: false } }).sort({ datePublished: -1 }).limit(1).toArray()
@@ -251,6 +260,7 @@ async function scrape(pdfPath, imagePathBase, s3) {
   // 3) generate thumbnail / parse
   console.log(chalk.green(`Step 2) Parsing pdf....`))
   let info = {}
+  await updatePaper(paper, info) // mark as read
   try {
     const { thumbs, projectUrl, } = await parse(paper, pdfPath, imagePathBase)
     // 4) upload to aws
@@ -269,13 +279,7 @@ async function scrape(pdfPath, imagePathBase, s3) {
   }
   
   console.log(chalk.green(`Step 4) Updating database record....`))
-  let dbResult = await db.collection('papers').updateOne({ _id: paper._id } , { $set: { info, } })
-  if (!dbResult.result.nModified) {
-    console.log(dbResult)
-    console.log(chalk.red(`Error during update`))
-    process.exit(1)
-  }
-
+  await updatePaper(paper, info)
   // start at 1)
   return true
 }

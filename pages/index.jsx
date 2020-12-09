@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import Head from 'next/head'
 import qs from "query-string"
+import Link from 'next/link'
 
 import { Paper } from '@/components/paper.jsx'
 import RemoveIcon from '@/lib/icons/circle-remove.svg'
@@ -9,9 +10,10 @@ import { useQueryState } from '@/lib/util'
 
 
 
-const fetcher = async (filters) => {
-  let resp = await fetch(buildAPIURI(filters))
-  return await resp.json()
+const fetcher = async (filters, offset = 0) => {
+  let resp = await fetch(buildAPIURI({ ...filters, offset, }))
+  let data = await resp.json()
+  return data
 }
 
 
@@ -27,14 +29,87 @@ const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 
-export default function Home({ initialFilters, initialPapers, paperCount }) {
+function InfiniteList({ initialData, filters, onauthorclick, }) {
+  const [page, setPage] = useState(0)
+  const [papers, setPapers] = useState(initialData.items)
+  const [hasNext, setHasNext] = useState(initialData.hasNext)
+
+  // Fetch on filter update
+  useIsomorphicLayoutEffect(() => {
+    fetcher(filters).then(data => {
+      setPapers(data.items)
+      setHasNext(data.hasNext)
+      setPage(0)
+      pageRef.current = 0
+    })
+  }, [filters])
+
+  const pageRef = useRef(0)
+
+  // Fetch on infinite scroll
+  useEffect(() => {
+    if (pageRef.current >= page) {
+      return
+    }
+
+    fetcher(filters, papers.length).then(data => {
+      setPapers((p) => [].concat(p, data.items))
+      setHasNext(data.hasNext)
+      pageRef.current += 1
+    })
+  }, [page])
+
+  const intersectionObserver = useRef()
+  const prevY = useRef(0)
+
+  // Update page for infinite scroll
+  useIsomorphicLayoutEffect(() => {
+    intersectionObserver.current = new IntersectionObserver((entries) => {
+      const firstEntry = entries[0]
+      const y = firstEntry.boundingClientRect.y
+
+      if (prevY.current > y) {
+        setPage((page) => page + 1)
+      }
+
+      prevY.current = y
+    }, { threshold: 0.5 })
+  }, [])
+
+  const [loadingRef, setLoadingRef] = useState(null)
+
+  useEffect(() => {
+    const currentLoadingRef = loadingRef
+    const currentObserver = intersectionObserver.current
+
+    if (currentLoadingRef) {
+      currentObserver.observe(currentLoadingRef)
+    }
+
+    return () => {
+      if (currentLoadingRef) {
+        currentObserver.unobserve(currentLoadingRef)
+      }
+    };
+  }, [loadingRef])
+
+  return (
+    <>
+      {papers.map((paper) => {
+        return (
+          <li key={paper.guid}>
+            <Paper onauthorclick={onauthorclick} {...paper} />
+          </li>)
+      })}
+      {hasNext ? (<li key={'loadingLabel'} ref={setLoadingRef}><p>Loading more papers....</p></li>) : (<></>)}
+    </>
+  )
+}
+
+
+export default function Home({ initialFilters, initialData, paperCount }) {
   const [strippedFilters, setStrippedFilters] = useQueryState(initialFilters)
   const [filters, setFilters] = useState({ ...strippedFilters })
-  const [papers, _setPapers] = useState(initialPapers)
-
-  useIsomorphicLayoutEffect(() => {
-    fetcher(strippedFilters).then(result => _setPapers(result))
-  }, [strippedFilters])
 
   const updateFilters = useCallback((newValue) => {
     const newStrippedFilters = { ...strippedFilters, ...newValue }
@@ -77,20 +152,14 @@ export default function Home({ initialFilters, initialPapers, paperCount }) {
           })}
           </div>
           <ol className="flex flex-col space-y-6">
-          {papers.map((paper) => {
-            return (<li key={paper.guid}>
-              <Paper
-                onauthorclick={(author) => updateFilters({ authors: [...filters.authors.filter(x => x != author), author], })} 
-                {...paper} /></li>)
-          })}
+            <InfiniteList initialData={initialData} filters={strippedFilters} 
+              onauthorclick={(author) => updateFilters({ authors: [...filters.authors.filter(x => x != author), author], })} />
           </ol>
         </div>
       </main>
 
-      <footer className="">
-        <a>
-        Arxivisor
-        </a>
+      <footer className="text-center mt-6 mb-16">
+        <Link href="/"><a className="font-semibold">Arxivisor</a></Link>
       </footer>
     </div>
   )
@@ -108,12 +177,15 @@ export async function getServerSideProps(context) {
     authors: authors || []
   }
 
-  let [ papers, count, ] = await getPapers({
+  let initialData = await getPapers({
     ...initialFilters,
     retrieveCount: true
   })
 
+  let count = initialData.count
+  delete initialData.count
+
   return {
-    props: { initialFilters, initialPapers: papers, paperCount: count }, // will be passed to the page component as props
+    props: { initialFilters, initialData, paperCount: count, }, // will be passed to the page component as props
   }
 }

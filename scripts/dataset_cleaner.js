@@ -23,11 +23,11 @@ async function dataset() {
       console.log(`Failed to establish database connection. Error: ${err}`)
       return
    }
-   let aggr = await db.collection('annotations')
-      .aggregate([
-         { $group: { _id: '$guid' } },
-         { $count: 'count' }
-      ]).next()
+   let aggr = (await db.collection('annotations')
+         .aggregate([
+            { $group: { _id: '$guid' } },
+            { $count: 'count' }
+         ]).next()).count
 
    console.log(aggr)
 }

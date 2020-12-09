@@ -1,11 +1,12 @@
 import { getDatabase } from '@/db/connection';
 
 
-export async function getPapers({ search = null, authors = [], retrieveCount = false }) {
+export async function getPapers({ search = null, offset = 0, authors = [], retrieveCount = false }) {
     let db = await getDatabase()
     let countOp = null
+    const n = 10
 
-    let paperOp = (async () => {
+    let paperOps = (() => {
         // Build query
         let selector = {}, projection = { _id: 0 }, sorting = {}
         if (!!search) {
@@ -21,20 +22,23 @@ export async function getPapers({ search = null, authors = [], retrieveCount = f
         if (authors.length) {
             selector['authors'] = { $in: authors }
         }
+        // Make int
+        offset = parseInt(offset) || 0
         // Add that last
         sorting.datePublished = -1
         // Get results
-        let result = await db.collection('papers').find(selector).project(projection).sort(sorting).limit(25)
-        return result.toArray() 
+        let result = db.collection('papers').find(selector).project(projection).sort(sorting).skip(offset).limit(n + 1)
+        return { items: result.clone().limit(n).toArray(), hasNext: result.count(true).then(count => count > n) }
     })()
 
-    let ops = [paperOp]
+    let ops = paperOps
     if (retrieveCount) {
-        let countOp = db.collection('papers').countDocuments()
-        ops.push(countOp)
+        ops.count = db.collection('papers').countDocuments()
     }
 
-    return await Promise.all(ops)    
+    let results = await Promise.all(Object.values(ops))
+    let keys = Object.keys(ops)
+    return Object.fromEntries(results.map((r, i) => [keys[i], r]))
 }
 
 export default async function (req, res) {
@@ -45,6 +49,6 @@ export default async function (req, res) {
         options.authors = []
     if (!Array.isArray(options.authors))
         options.authors = [options.authors]
-    let [papers] = await getPapers(options)
-    res.json(papers)
+    let data = await getPapers(options)
+    res.json(data)
 }
