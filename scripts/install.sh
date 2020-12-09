@@ -4,4 +4,4 @@ if ! [ -x "$(command -v yum)" ]; then
   exit 0;
 fi
 
-yum install libuuid-devel libmount-devel && cp /lib64/{libuuid,libmount,libblkid}.so.1 node_modules/canvas/build/Release/
+# yum install libuuid-devel libmount-devel && cp /lib64/{libuuid,libmount,libblkid}.so.1 node_modules/canvas/build/Release/
