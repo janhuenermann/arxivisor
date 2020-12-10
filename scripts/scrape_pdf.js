@@ -1,3 +1,18 @@
+/**
+ * scrape_pdf.js
+ *
+ *
+ * Tool to automatically 
+ * 1) download new PDFs, 
+ * 2) create thumbnails, 
+ * 3) upload thumbs to S3, and 
+ * 4) insert URL annotations from the PDF into database
+ *
+ * Use cli argument `--thumbs 0` to disable uploading to S3
+ * 
+ * Requires MONGODB_CONNECTION_STRING environment variable to be set
+ */
+
 const fs = require('fs')
 const fetch = require('node-fetch')
 const { createCanvas } = require('canvas')

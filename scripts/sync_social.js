@@ -1,3 +1,13 @@
+/**
+ * sync_social.js
+ *
+ *
+ * Tool to automatically sync social media stats about each paper with database
+ * Currently fetches twitter and reddit
+ * 
+ * Requires MONGODB_CONNECTION_STRING and TWITTER_BEARER_TOKEN environment variables to be set
+ */
+
 const needle = require('needle')
 const { MongoClient } = require('mongodb')
 const path = require('path')

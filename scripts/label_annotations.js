@@ -1,3 +1,19 @@
+/**
+ * label_annotations.js
+ *
+ * Tool to create URL dataset by labelling PDF annotations (fetched using `scrape_pdf.js`) 
+ * and inserting labels into database.
+ * 
+ * When using, you are asked to classify PDF url annotations as either
+ * 1) project page
+ * 2) source code
+ * 3) demo
+ *
+ * The resulting dataset can be used to verify and train automatic systems
+ *
+ * Requires MONGODB_CONNECTION_STRING environment variable to be set
+ */
+
 const { MongoClient } = require('mongodb')
 const path = require('path')
 const readline = require('readline')

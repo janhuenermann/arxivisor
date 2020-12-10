@@ -1,3 +1,13 @@
+/**
+ * run_index.js
+ *
+ *
+ * Tool to fetch new papers from Arxiv and put them into our database
+ * 
+ * Requires MONGODB_CONNECTION_STRING environment variable to be set
+ */
+
+
 const FeedParser = require('feedparser')
 const { MongoClient } = require('mongodb')
 const fetch = require('node-fetch')

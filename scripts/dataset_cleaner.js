@@ -1,3 +1,12 @@
+/**
+ * dataset_cleaner.js
+ *
+ * Tool to display stats about URL dataset created using `label_annotations.js`
+ *
+ * Requires MONGODB_CONNECTION_STRING environment variable to be set
+ */
+
+
 const { MongoClient } = require('mongodb')
 const path = require('path')
 const chalk = require('chalk')
