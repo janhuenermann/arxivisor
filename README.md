@@ -1,4 +1,4 @@
-# arxivisor
+# Arxivisor 🔍📚
 Make arxiv readable!
 
 ## TODO
