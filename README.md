@@ -4,7 +4,7 @@ Make arxiv readable!
 ## TODO
 
 - [x] Infinite scroll
-- [ ] Filter by author
+- [x] Filter by author
 - [ ] User login 
 - [ ] Upvoting of papers (like _reddit_)
 - [ ] Newsletter for topics on newly released papers
