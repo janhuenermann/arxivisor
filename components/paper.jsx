@@ -58,7 +58,7 @@ export function Paper({
                 </div>
                 )}
             </div>
-            <p className="mt-4 font-sans">{summaryEl}</p>
+            <p className="mt-4 font-sans break-words overflow-x-hidden">{summaryEl}</p>
         </div>
     )
 }

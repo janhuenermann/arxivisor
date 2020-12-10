@@ -230,7 +230,7 @@ async function upload(paper, thumbs, s3) {
 
 async function updatePaper(paper, info) {
   let dbResult = await db.collection('papers').updateOne({ _id: paper._id } , { $set: { info, } })
-  if (!dbResult.result.nModified) {
+  if (!(dbResult.result.nModified || dbResult.result.n)) {
     console.log(dbResult)
     console.log(chalk.red(`Error during update`))
     process.exit(1)

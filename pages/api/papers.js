@@ -25,10 +25,13 @@ export async function getPapers({ search = null, offset = 0, authors = [], retri
         // Make int
         offset = parseInt(offset) || 0
         // Add that last
-        sorting.datePublished = -1
+        sorting.dateUpdated = -1
         // Get results
-        let result = db.collection('papers').find(selector).project(projection).sort(sorting).skip(offset).limit(n + 1)
-        return { items: result.clone().limit(n).toArray(), hasNext: result.count(true).then(count => count > n) }
+        let result = db.collection('papers').find(selector).project(projection).sort(sorting).skip(offset)
+        return { 
+            items: result.clone().limit(n).toArray(), 
+            hasNext: result.clone().limit(n + 1).count(true).then(count => count > n)
+        }
     })()
 
     let ops = paperOps
